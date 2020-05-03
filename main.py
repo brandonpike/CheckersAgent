@@ -1,164 +1,144 @@
-class Board():
-	def __init__(self):
-		self.board = [[1,0,1,0,1,0,1,0],
-					  [0,1,0,1,0,1,0,1],
-					  [1,0,1,0,1,0,1,0],
-					  [0,-1,0,0,0,0,0,0],
-					  [0,0,0,0,0,0,0,0],
-					  [-1,-1,0,0,-1,0,-1,0],
-					  [0,-1,0,-1,0,-1,0,-1],
-					  [-1,0,-1,0,-1,0,-1,0]]
-		'''self.board = [[1,0,1,0,1,0,1,0],
-					  [0,1,0,1,0,1,0,1],
-					  [1,0,1,0,1,0,1,0],
-					  [0,0,0,0,0,0,0,0],
-					  [0,0,0,0,0,0,0,0],
-					  [-1,0,-1,0,-1,0,-1,0],
-					  [0,-1,0,-1,0,-1,0,-1],
-					  [-1,0,-1,0,-1,0,-1,0]]'''
-		self.moves_made = 0
+from Board import Board
+from Agent import Agent
+import GUI as gui
 
-	def makeMove(self, begin, end):
-		path = self.getPath(begin,end)
-		if path:
-			self.board[end[0]][end[1]] = self.board[begin[0]][begin[1]]
-			self.board[begin[0]][begin[1]] = 0
-			print("Move made -", begin,"->",end)
-			self.moves_made += 1
-			return True
+def playGame_AgentGUI(board):
+
+	agent = Agent()
+	inp = ""
+	stayButton = gui.createButton("Stay",150, 545, 100, 50, (0,125,0), (50,100,0))
+	quitButton = gui.createButton("Quit",550, 545, 100, 50, (225,50,0), (255,25,0))
+	while board.playing:
+		for event in gui.getpygame().event.get():
+			if event.type == gui.getpygame().QUIT:
+				board.playing = False;
+				return
+
+		gui.getScreen().fill((255,255,255))
+		# Quit button
+		quitButton.update()
+		board.playing = not quitButton.status
+		# Frame
+		gui.createFrame(5,5,790,535,(0,0,0))
+
+		board.printBoard()
+		if not board.printed:
+			print(board)
+			board.printed = True
+
+		if board.turn == 1: # User turn
+			# Stay button
+			if board.mustHop:
+				stayButton.update()
+				if stayButton.status:
+					board.makeMove(board.mustHopPiece,board.mustHopPiece)
+					board.clearMarkings = True
+					board.curBegin = None
+					board.curEnd = None
+					stayButton.status = False
+					continue
+			if board.curBegin:
+				#print(board.curBegin,end=" -> ")
+				if board.curEnd:
+					#print(board.curEnd, end="")
+					p1 = board.curBegin.split(",")
+					p2 = board.curEnd.split(",")
+					begin = (int(p1[0]),int(p1[1]))
+					end = (int(p2[0]),int(p2[1]))
+					print(board.makeMove(begin,end))
+					board.clearMarks()
+				#print()
+			board.checkClicks()
+		else: # Computer turn
+			move = agent.chooseMove(board)
+			if move == 'forfeit':
+				winner = 1
+				board.playing = False
+				continue
+			split_points = move.split(" ")
+			p1 = split_points[0].split(",")
+			p2 = split_points[1].split(",")
+			begin = (int(p1[0]),int(p1[1]))
+			end = (int(p2[0]),int(p2[1]))
+			print(board.makeMove(begin,end))
+
+		gui.pygame.display.update()
+
+
+
+
+		''' # Console Play
+		while inp == "":
+			inp = input("White move - (x,y) to (x,y): ") if board.turn == 1 else agent.chooseMove(board)
+			if not checkInput(inp):
+				print("Input two points or quit")
+				inp = ""
+		if inp.lower() == 'quit':
+			break
+		else:
+			split_points = inp.split(" ")
+			p1 = split_points[0].split(",")
+			p2 = split_points[1].split(",")
+			begin = (int(p1[0]),int(p1[1]))
+			end = (int(p2[0]),int(p2[1]))
+			print(board.makeMove(begin,end))
+		inp = ""'''
+	print(("User" if winner == 1 else "Computer") , "wins this game!")
+
+def playGame_Agent(board):
+
+	agent = Agent()
+	inp = ""
+	while board.playing:
+		print(board)
+		while inp == "":
+			#inp = input(("White" if board.turn == 1 else "Black")+" move - (x,y) to (x,y): ")
+			inp = input("White move - (x,y) to (x,y): ") if board.turn == 1 else agent.chooseMove(board)
+			if not checkInput(inp):
+				print("Input two points or quit")
+				inp = ""
+		if inp.lower() == 'quit':
+			break
+		else:
+			split_points = inp.split(" ")
+			p1 = split_points[0].split(",")
+			p2 = split_points[1].split(",")
+			begin = (int(p1[0]),int(p1[1]))
+			end = (int(p2[0]),int(p2[1]))
+			print(board.makeMove(begin,end))
+		inp = ""
+
+def playGame_2Humans(board):
+
+	inp = ""
+	while board.playing:
+		print(board)
+		while inp == "":
+			inp = input(("White" if board.turn == 1 else "Black")+" move - (x,y) to (x,y): ")
+			if not checkInput(inp):
+				print("Input two points or quit")
+				inp = ""
+		if inp.lower() == 'quit':
+			break
+		else:
+			split_points = inp.split(" ")
+			p1 = split_points[0].split(",")
+			p2 = split_points[1].split(",")
+			begin = (int(p1[0]),int(p1[1]))
+			end = (int(p2[0]),int(p2[1]))
+			print(board.makeMove(begin,end))
+		inp = ""
+
+def checkInput(inp):
+	if len(inp) != 7 and inp.lower() != "quit":
 		return False
-
-	def getPath(self, begin, end):
-		# Check path
-		if self.board[begin[0]][begin[1]] == 1: # if white turn
-			sucessorFunc = "getSuccessorsWhite"
-		elif self.board[begin[0]][begin[1]] == -1: # if black turn
-			sucessorFunc = "getSuccessorsBlack"
-		elif self.board[begin[0]][begin[1]] in (-2,2): # if queen
-			sucessorFunc = "getSuccessorsQueen"
-
-		path = [begin]
-		Q = [begin]
-		while len(Q) > 0:
-			print("Next",str(Q))
-			n = Q.pop()
-			if n == end:
-				print("FOUND")
-				return Q
-
-			successors = eval('self.'+sucessorFunc+'('+str(n)+')')
-			for s in successors:
-				if abs(s[0]-n[0]) == 1 and abs(s[1]-n[1]) == 1:
-					if s == end:
-						return path + [s]
-					else:
-						print(s,1)
-				else:
-					Q.append(s)
-
-
-		return False
-
-	def getSuccessorsWhite(self, point):
-		print("WHITE SUCCESSORS",point)
-		# DL or DR
-		successors = set()
-		if point[0]+1 < 8: # row index check
-			# DR
-			if point[1]+1 < 8 and self.board[point[0]+1][point[1]+1] == 0: # Dist=1
-				successors.add((point[0]+1,point[1]+1))
-			else: # Dist=2
-				if point[1]+1 < 8 and self.board[point[0]+1][point[1]+1] in (-1,-2): # Black piece we can hop
-					if point[0]+2 < 8 and point[1]+2 < 8 and self.board[point[0]+2][point[1]+2] == 0: # Hoppable
-						successors.add((point[0]+2,point[1]+2))
-			# DL
-			if point[1]-1 >= 0 and self.board[point[0]+1][point[1]-1] == 0: # Dist=1
-				successors.add((point[0]+1,point[1]-1))
-			else: # Dist=2
-				if point[1]-1 >= 0 and self.board[point[0]+1][point[1]-1] in (-1,-2): # Black piece we can hop
-					if point[0]+2 < 8 and point[1]-2 >= 0 and self.board[point[0]+2][point[1]-2] == 0: # Hoppable
-						successors.add((point[0]+2,point[1]-2))
-		return successors
-
-	def getSuccessorsBlack(self, point):
-		print("BLACK SUCCESSORS",point)
-		successors = set()
-		# UL or UR
-		if point[0]-1 >= 0: # row index check
-			# UR
-			if point[1]+1 < 8 and self.board[point[0]-1][point[1]+1] == 0: # Dist=1
-				successors.add((point[0]-1,point[1]+1))
-			else: # Dist=2
-				if point[1]+1 < 8 and self.board[point[0]-1][point[1]+1] in (1,2): # White piece we can hop
-					if point[0]-2 >= 0 and point[1]+2 < 8 and self.board[point[0]-2][point[1]+2] == 0: # Hoppable
-						successors.add((point[0]-2,point[1]+2))
-			# UL
-			if point[1]-1 >= 0 and self.board[point[0]-1][point[1]-1] == 0: # Dist=1
-				successors.add((point[0]-1,point[1]-1))
-			else: # Dist=2
-				if point[1]-1 >= 0 and self.board[point[0]-1][point[1]-1] in (1,2): # Black piece we can hop
-					if point[0]-2 < 8 and point[1]-2 >= 0 and self.board[point[0]-2][point[1]-2] == 0: # Hoppable
-						successors.add((point[0]-2,point[1]-2))
-		return successors
-
-	def getSuccessorsQueen(self, point):
-		print("QUEEN SUCCESSORS",point)
-		ourPiece = self.board[point[0]][point[1]]
-		captureable = (-1,-2) if ourPiece == 2 else (1,2)
-		print(ourPiece,captureable)
-		successors = set()
-		# UL or UR
-		if point[0]-1 >= 0: # row index check
-			# UR
-			if point[1]+1 < 8 and self.board[point[0]-1][point[1]+1] == 0: # Dist=1
-				successors.add((point[0]-1,point[1]+1))
-			else: # Dist=2
-				if point[1]+1 < 8 and self.board[point[0]-1][point[1]+1] in captureable: # Opposite piece we can hop
-					if point[0]-2 >= 0 and point[1]+2 < 8 and self.board[point[0]-2][point[1]+2] == 0: # Hoppable
-						successors.add((point[0]-2,point[1]+2))
-			# UL
-			if point[1]-1 >= 0 and self.board[point[0]-1][point[1]-1] == 0: # Dist=1
-				successors.add((point[0]-1,point[1]-1))
-			else: # Dist=2
-				if point[1]-1 >= 0 and self.board[point[0]-1][point[1]-1] in captureable: # Opposite piece we can hop
-					if point[0]-2 < 8 and point[1]-2 >= 0 and self.board[point[0]-2][point[1]-2] == 0: # Hoppable
-						successors.add((point[0]-2,point[1]-2))
-		# DL or DR
-		if point[0]+1 < 8: # row index check
-			# DR
-			if point[1]+1 < 8 and self.board[point[0]+1][point[1]+1] == 0: # Dist=1
-				successors.add((point[0]+1,point[1]+1))
-			else: # Dist=2
-				if point[1]+1 < 8 and self.board[point[0]+1][point[1]+1] in captureable: # Opposite piece we can hop
-					if point[0]+2 < 8 and point[1]+2 < 8 and self.board[point[0]+2][point[1]+2] == 0: # Hoppable
-						successors.add((point[0]+2,point[1]+2))
-			# DL
-			if point[1]-1 >= 0 and self.board[point[0]+1][point[1]-1] == 0: # Dist=1
-				successors.add((point[0]+1,point[1]-1))
-			else: # Dist=2
-				if point[1]-1 >= 0 and self.board[point[0]+1][point[1]-1] in captureable: # Opposite piece we can hop
-					if point[0]+2 < 8 and point[1]-2 >= 0 and self.board[point[0]+2][point[1]-2] == 0: # Hoppable
-						successors.add((point[0]+2,point[1]-2))
-		return successors
-
-	def __str__(self):
-		s = "Move: " + str(self.moves_made) + "\n"
-		for i,row in enumerate(self.board):
-			for j,col in enumerate(row):
-				s += str(col)
-				if j != len(row)-1:
-					s += ","
-			s += "\n"
-		return s
+	else:
+		return True
+	return False
 
 def main():
 	board = Board()
-	print(board)
-	begin = (2,2)
-	end = (6,2)
-	print(board.getPath(begin,end))
-	#print(str(board.makeMove((0,0), (4,1))) + "\n")
-	#print(board)
+	playGame_AgentGUI(board)
 
 if __name__ == '__main__':
 	main()
